@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Neuroclass.AI — Live Dashboard</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#04080f;--surface:#080d18;--surface2:#0c1220;
+  --border:rgba(56,189,248,0.1);--text:#e8f4fd;--muted:#5a7a9a;
+  --accent:#38bdf8;--green:#10b981;--amber:#f59e0b;--red:#ef4444;--purple:#8b5cf6;
+}
+body{background:var(--bg);color:var(--text);font-family:'Courier New',monospace;font-size:13px}
+nav{display:flex;justify-content:space-between;align-items:center;padding:0.9rem 1.5rem;
+    background:var(--surface);border-bottom:1px solid var(--border)}
+.logo{font-size:15px;font-weight:bold;color:var(--accent)}
+.nav-right{display:flex;align-items:center;gap:1rem}
+.live-badge{display:flex;align-items:center;gap:6px;color:var(--green);font-size:11px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+.btn{padding:6px 16px;border-radius:4px;border:none;cursor:pointer;font-size:11px;font-family:inherit;transition:all 0.2s}
+.btn-start{background:var(--green);color:#000}
+.btn-stop{background:var(--red);color:#fff}
+.btn-start:hover{opacity:0.85} .btn-stop:hover{opacity:0.85}
+
+.layout{display:grid;grid-template-columns:1fr 340px;height:calc(100vh - 50px)}
+.main{overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:1rem}
+.sidebar{border-left:1px solid var(--border);overflow-y:auto;padding:1.25rem;display:flex;flex-direction:column;gap:1rem}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem}
+.card-title{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.85rem}
+
+/* STATS ROW */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:1rem;text-align:center}
+.stat-n{font-size:2rem;font-weight:bold;letter-spacing:-0.04em}
+.stat-l{font-size:10px;color:var(--muted);text-transform:uppercase;margin-top:3px}
+
+/* VIDEO */
+.video-wrap{background:var(--surface);border:1px solid var(--border);border-radius:8px;overflow:hidden;position:relative}
+.video-wrap img{width:100%;display:block;min-height:200px;background:#000}
+.video-overlay{position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.7);
+  border:1px solid var(--border);padding:4px 10px;border-radius:4px;font-size:10px;color:var(--accent)}
+
+/* EFFICIENCY SCORE */
+.eff-row{display:flex;align-items:center;gap:1.25rem}
+.eff-score{font-size:3.5rem;font-weight:bold;color:var(--accent);letter-spacing:-0.06em;line-height:1}
+.eff-info{flex:1}
+.eff-label{font-size:14px;font-weight:bold;margin-bottom:4px}
+.eff-formula{font-size:10px;color:var(--muted)}
+.progress-bar{height:6px;background:var(--surface2);border-radius:3px;margin-top:8px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,var(--accent),var(--green));border-radius:3px;transition:width 1s ease}
+
+/* SEAT GRID */
+.seat-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-bottom:8px}
+.seat{aspect-ratio:1;border-radius:3px;cursor:pointer;transition:transform 0.2s;title:attr(data-id)}
+.seat:hover{transform:scale(1.3)}
+.seat.high{background:rgba(16,185,129,0.55);border:1px solid rgba(16,185,129,0.4)}
+.seat.mid{background:rgba(245,158,11,0.45);border:1px solid rgba(245,158,11,0.3)}
+.seat.low{background:rgba(139,92,246,0.45);border:1px solid rgba(139,92,246,0.3)}
+.seat.alert{background:rgba(239,68,68,0.6);border:1px solid var(--red);animation:pulse 1s infinite}
+.seat.empty{background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.06)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+.legend{display:flex;gap:12px;flex-wrap:wrap}
+.leg{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted)}
+.leg-dot{width:8px;height:8px;border-radius:2px}
+
+/* EVENTS */
+.events{display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto}
+.event{display:flex;align-items:flex-start;gap:8px;background:var(--surface2);
+  border:1px solid var(--border);border-radius:5px;padding:0.6rem 0.85rem}
+.badge{font-size:9px;padding:2px 7px;border-radius:2px;text-transform:uppercase;
+  letter-spacing:0.05em;flex-shrink:0;white-space:nowrap}
+.badge.high{background:rgba(239,68,68,0.15);color:var(--red);border:1px solid rgba(239,68,68,0.3)}
+.badge.medium{background:rgba(245,158,11,0.12);color:var(--amber);border:1px solid rgba(245,158,11,0.25)}
+.badge.low{background:rgba(56,189,248,0.1);color:var(--accent);border:1px solid rgba(56,189,248,0.2)}
+.ev-text{font-size:11px;color:var(--muted);flex:1}
+.ev-time{font-size:9px;color:#2a3a4a;flex-shrink:0}
+
+/* MODULE STATUS */
+.modules{display:flex;flex-direction:column;gap:6px}
+.module{display:flex;justify-content:space-between;align-items:center;
+  padding:0.6rem;background:var(--surface2);border-radius:5px;font-size:11px}
+.mod-status{font-size:10px;padding:2px 8px;border-radius:3px}
+.mod-status.on{background:rgba(16,185,129,0.15);color:var(--green);border:1px solid rgba(16,185,129,0.25)}
+.mod-status.off{background:rgba(100,100,100,0.1);color:var(--muted);border:1px solid var(--border)}
+
+/* ATTENDANCE LIST */
+.att-list{display:flex;flex-direction:column;gap:5px;max-height:200px;overflow-y:auto}
+.att-item{display:flex;justify-content:space-between;align-items:center;
+  padding:5px 8px;background:var(--surface2);border-radius:4px;font-size:11px}
+.att-status{font-size:9px;padding:2px 7px;border-radius:3px}
+.att-status.present{background:rgba(16,185,129,0.15);color:var(--green)}
+.att-status.pending{background:rgba(245,158,11,0.12);color:var(--amber)}
+
+.class-select{background:var(--surface2);border:1px solid var(--border);
+  color:var(--text);padding:5px 10px;border-radius:4px;font-family:inherit;font-size:11px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">NEUROCLASS.AI</div>
+  <div class="nav-right">
+    <select class="class-select" id="classSelect" onchange="setClass(this.value)">
+      <option value="CLASS_301">Room 301</option>
+      <option value="CLASS_302">Room 302</option>
+      <option value="CLASS_303">Room 303</option>
+      <option value="CLASS_401">Room 401</option>
+    </select>
+    <div class="live-badge" id="liveBadge" style="display:none">
+      <span class="dot"></span> LIVE
+    </div>
+    <button class="btn btn-start" id="startBtn" onclick="startDetection()">▶ Start Detection</button>
+    <button class="btn btn-stop" id="stopBtn" onclick="stopDetection()" style="display:none">■ Stop</button>
+  </div>
+</nav>
+
+<div class="layout">
+  <div class="main">
+
+    <!-- STATS -->
+    <div class="stats-row">
+      <div class="stat">
+        <div class="stat-n" id="effScore" style="color:var(--accent)">--</div>
+        <div class="stat-l">Efficiency Score</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="presentCount" style="color:var(--green)">0/0</div>
+        <div class="stat-l">Present / Enrolled</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="alertCount" style="color:var(--red)">0</div>
+        <div class="stat-l">Active Alerts</div>
+      </div>
+      <div class="stat">
+        <div class="stat-n" id="timeStamp" style="color:var(--muted);font-size:1.2rem">--:--</div>
+        <div class="stat-l">Session Time</div>
+      </div>
+    </div>
+
+    <!-- VIDEO FEED -->
+    <div class="video-wrap">
+      <img id="videoFeed" src="" alt="Start detection to view live feed" style="min-height:320px;object-fit:cover">
+      <div class="video-overlay" id="videoOverlay">◎ Camera Offline</div>
+    </div>
+
+    <!-- EFFICIENCY CARD -->
+    <div class="card">
+      <div class="card-title">Teacher Efficiency Score</div>
+      <div class="eff-row">
+        <div class="eff-score" id="bigEffScore">--</div>
+        <div class="eff-info">
+          <div class="eff-label">Classroom Intelligence Score</div>
+          <div class="eff-formula">Formula: (0.5×Engagement + 0.3×(1-Distraction) + 0.2×Attendance) × 100</div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="effBar" style="width:0%"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEAT HEATMAP -->
+    <div class="card">
+      <div class="card-title">Classroom Engagement Heatmap — Live</div>
+      <div class="seat-grid" id="seatGrid"></div>
+      <div class="legend">
+        <div class="leg"><div class="leg-dot" style="background:rgba(16,185,129,0.6)"></div>High Engagement</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(245,158,11,0.5)"></div>Moderate</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(139,92,246,0.5)"></div>Low</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(239,68,68,0.6)"></div>Alert</div>
+        <div class="leg"><div class="leg-dot" style="background:rgba(255,255,255,0.05)"></div>Empty</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="sidebar">
+
+    <!-- LIVE EVENTS -->
+    <div class="card">
+      <div class="card-title">Live Event Log</div>
+      <div class="events" id="eventLog">
+        <div style="color:var(--muted);font-size:11px;text-align:center;padding:1rem">
+          Start detection to see live events...
+        </div>
+      </div>
+    </div>
+
+    <!-- DETECTION MODULES -->
+    <div class="card">
+      <div class="card-title">Detection Modules</div>
+      <div class="modules">
+        <div class="module"><span>01 Smart Attendance</span><span class="mod-status" id="mod1">OFF</span></div>
+        <div class="module"><span>02 Cheating Detection</span><span class="mod-status" id="mod2">OFF</span></div>
+        <div class="module"><span>03 Drowsiness</span><span class="mod-status" id="mod3">OFF</span></div>
+        <div class="module"><span>04 Phone Usage</span><span class="mod-status" id="mod4">OFF</span></div>
+        <div class="module"><span>05 Emotion/Health</span><span class="mod-status" id="mod5">OFF</span></div>
+        <div class="module"><span>06 Attention</span><span class="mod-status" id="mod6">OFF</span></div>
+        <div class="module"><span>07 Intruder</span><span class="mod-status" id="mod7">OFF</span></div>
+      </div>
+    </div>
+
+    <!-- ATTENDANCE -->
+    <div class="card">
+      <div class="card-title">Today's Attendance</div>
+      <div class="att-list" id="attendanceList">
+        <div style="color:var(--muted);font-size:11px;text-align:center;padding:0.5rem">
+          No records yet
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+let isRunning = false;
+let statusInterval = null;
+let eventInterval = null;
+let seatData = [];
+
+// Init seat grid (32 seats)
+function initSeats() {
+  const grid = document.getElementById('seatGrid');
+  grid.innerHTML = '';
+  seatData = [];
+  for (let i = 0; i < 32; i++) {
+    const seat = document.createElement('div');
+    seat.className = 'seat empty';
+    seat.title = `Seat ${String.fromCharCode(65 + Math.floor(i/8))}${(i%8)+1}`;
+    seat.id = `seat_${i}`;
+    grid.appendChild(seat);
+    seatData.push('empty');
+  }
+}
+initSeats();
+
+function updateSeatGrid(status) {
+  const classes = ['high','mid','low','alert','empty'];
+  const weights = [50, 25, 15, 5, 5];
+  seatData.forEach((_, i) => {
+    // Randomly update seats based on detection status
+    if (Math.random() < 0.05) {
+      const cls = weightedRandom(classes, weights);
+      const seat = document.getElementById(`seat_${i}`);
+      if (seat) {
+        seat.className = `seat ${cls}`;
+        seatData[i] = cls;
+      }
+    }
+  });
+}
+
+function weightedRandom(items, weights) {
+  const total = weights.reduce((a,b) => a+b, 0);
+  let rand = Math.random() * total;
+  for (let i = 0; i < items.length; i++) {
+    rand -= weights[i];
+    if (rand <= 0) return items[i];
+  }
+  return items[items.length-1];
+}
+
+async function startDetection() {
+  const classId = document.getElementById('classSelect').value;
+  try {
+    const res = await fetch('/api/start', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({class_id: classId})
+    });
+    const data = await res.json();
+    if (data.status === 'started' || data.status === 'already_running') {
+      isRunning = true;
+      document.getElementById('startBtn').style.display = 'none';
+      document.getElementById('stopBtn').style.display = 'block';
+      document.getElementById('liveBadge').style.display = 'flex';
+      document.getElementById('videoFeed').src = '/api/video_feed';
+      document.getElementById('videoOverlay').textContent = '◎ LIVE';
+      // Turn on module indicators
+      for (let i = 1; i <= 7; i++) {
+        const el = document.getElementById(`mod${i}`);
+        el.textContent = 'ON';
+        el.className = 'mod-status on';
+      }
+      // Start polling
+      statusInterval = setInterval(pollStatus, 1500);
+      eventInterval = setInterval(loadEvents, 3000);
+    }
+  } catch(e) {
+    alert('Cannot connect to server. Make sure app.py is running!');
+  }
+}
+
+async function stopDetection() {
+  await fetch('/api/stop', {method:'POST'});
+  isRunning = false;
+  document.getElementById('startBtn').style.display = 'block';
+  document.getElementById('stopBtn').style.display = 'none';
+  document.getElementById('liveBadge').style.display = 'none';
+  document.getElementById('videoFeed').src = '';
+  document.getElementById('videoOverlay').textContent = '◎ Camera Offline';
+  for (let i = 1; i <= 7; i++) {
+    const el = document.getElementById(`mod${i}`);
+    el.textContent = 'OFF';
+    el.className = 'mod-status off';
+  }
+  clearInterval(statusInterval);
+  clearInterval(eventInterval);
+}
+
+async function pollStatus() {
+  try {
+    const res = await fetch('/api/status');
+    const data = await res.json();
+    const eff = data.teacher_efficiency || 0;
+
+    document.getElementById('effScore').textContent = eff + '%';
+    document.getElementById('bigEffScore').textContent = eff + '%';
+    document.getElementById('effBar').style.width = eff + '%';
+    document.getElementById('presentCount').textContent =
+      `${data.total_present || 0}/${data.total_enrolled || 32}`;
+    document.getElementById('timeStamp').textContent = data.timestamp || '--:--';
+
+    const alerts = (data.cheating_alerts||[]).length +
+                   (data.drowsy_students||[]).length +
+                   (data.phone_alerts||[]).length +
+                   (data.intruders||[]).length;
+    document.getElementById('alertCount').textContent = alerts;
+
+    updateSeatGrid(data);
+    updateEventLogFromStatus(data);
+  } catch(e) { console.log('Status poll failed', e); }
+}
+
+function updateEventLogFromStatus(data) {
+  const log = document.getElementById('eventLog');
+  const events = [];
+  const now = new Date().toLocaleTimeString();
+
+  (data.cheating_alerts || []).forEach(a =>
+    events.push({sev:'high', text:`Cheating Alert — ${a.face_id} yaw:${a.yaw}° for ${a.duration_secs}s`, time: now}));
+  (data.drowsy_students || []).forEach(a =>
+    events.push({sev:'high', text:`Drowsiness Detected — ${a.face_id} PERCLOS:${(a.perclos*100).toFixed(0)}%`, time: now}));
+  (data.phone_alerts || []).forEach(a =>
+    events.push({sev:'high', text:`Phone Usage — Confidence:${(a.confidence*100).toFixed(0)}%`, time: now}));
+  (data.intruders || []).forEach(a =>
+    events.push({sev:'high', text:`Intruder Detected — ${a.description}`, time: now}));
+
+  if (events.length > 0) {
+    log.innerHTML = events.map(e => `
+      <div class="event">
+        <span class="badge ${e.sev}">${e.sev.toUpperCase()}</span>
+        <span class="ev-text">${e.text}</span>
+        <span class="ev-time">${e.time}</span>
+      </div>`).join('');
+  }
+}
+
+async function loadEvents() {
+  try {
+    const res = await fetch('/api/events');
+    const events = await res.json();
+    if (events.length === 0) return;
+    const log = document.getElementById('eventLog');
+    log.innerHTML = events.slice(0,15).map(e => `
+      <div class="event">
+        <span class="badge ${e.severity}">${e.severity.toUpperCase()}</span>
+        <span class="ev-text">${e.event_type} — ${e.description||''}</span>
+        <span class="ev-time">${e.timestamp ? e.timestamp.substring(11,19) : ''}</span>
+      </div>`).join('');
+  } catch(e) {}
+}
+
+async function setClass(classId) {
+  if (isRunning) {
+    await stopDetection();
+    setTimeout(() => startDetection(), 500);
+  }
+}
+</script>
+</body>
+</html>
